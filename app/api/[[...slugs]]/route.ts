@@ -4,6 +4,7 @@ import {redis} from "@/lib/redis";
 import {authMiddleware} from "./auth";
 import { z } from "zod"
 import {Message, realtime} from "@/lib/realtime";
+import cors from "@elysiajs/cors";
 
 const ROOM_TTL_SECONDS = 60 * 10
 
@@ -81,7 +82,13 @@ const messages = new Elysia({prefix: "/messages"})
                 token:m.token === auth.token ? auth.token : undefined,
             }))}
     }, {query: z.object({roomId: z.string()})})
-const app = new Elysia({ prefix: '/api' }).use(rooms).use(messages)
+const app = new Elysia({ prefix: '/api' })
+    .use(cors({
+        origin: ['https://realtime-chat-five-kappa.vercel.app'],
+        credentials: true,
+    }))
+    .use(rooms)
+    .use(messages)
 
 export const GET = app.fetch
 export const POST = app.fetch
