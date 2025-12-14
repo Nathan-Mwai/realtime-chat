@@ -1,10 +1,12 @@
 "use client";
 
 import React, {useRef, useState} from 'react'
-import {useParams} from "next/navigation";
-import {useMutation} from "@tanstack/react-query";
+import {useParams, useRouter} from "next/navigation";
+import {useMutation, useQuery} from "@tanstack/react-query";
 import {client} from "@/lib/client";
 import {useUsername} from "@/hooks/use-username";
+import {format} from "date-fns";
+import {useRealtime} from "@/lib/realtime-client";
 
 const formatTimeRemaining =  (seconds:number) => {
     const mins = Math.floor(seconds / 60)
@@ -18,6 +20,8 @@ const Page = () => {
 
     const roomId = params.roomId as string
 
+    const router = useRouter()
+
     const {username} = useUsername()
 
     const [input, setInput] = useState("")
@@ -26,12 +30,34 @@ const Page = () => {
 
     const [timeRemaining, setTimeRemaining] = useState<number | null>(null)
 
+    const { data:messages, refetch } = useQuery({
+        queryKey: ["messages", roomId],
+        queryFn: async () => {
+            const res = await client.messages.get({query: {roomId}})
+            return res.data
+        }
+    })
+
     const { mutate: sendMessage, isPending } = useMutation({
         mutationFn: async ({ text }: { text: string }) => {
             await client.messages.post({ sender: username, text }, { query: { roomId } })
 
-            // setInput("")
+            setInput("")
         },
+    })
+
+    useRealtime({
+        channels: [roomId],
+        events: ["chat.message", "chat.destroy"],
+        onData:  ({event}) => {
+            if(event === "chat.message") {
+                refetch()
+            }
+
+            if(event==="chat.destroy"){
+                router.push("/?destroyed=true")
+            }
+        }
     })
 
     const [copyStatus, setCopyStatus] = useState("COPY")
@@ -79,8 +105,36 @@ const Page = () => {
                 </button>
             </header>
 
-            <div className={"flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin"}></div>
+            {/*Messages*/}
+            <div className={"flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin"}>
+                {messages?.messages.length === 0 && (
+                    <div className={"flex items-center justify-center h-full"}>
+                        <p className={"text-zinc-600 text-sm font-mono"}>No messages yet start the conversation</p>
+                    </div>
+                )}
 
+                {messages?.messages.map((msg)=> (
+                    <div key={msg.id} className={"flex flex-col items-start"}>
+                        <div className={"max-w-[80%] group"}>
+                            <div className={"flex items-baseline gap-3 mb-1"}>
+                                <span className={`text-xs font-bold ${msg.sender === username ? "text-green-500": "text-blue-500"}`}>
+                                    {msg.sender === username ? "YOU" : msg.sender}
+                                </span>
+
+                                <span className={"text-[10px] text-zinc-600"}>
+                                    {format(msg.timestamp, "HH:mm")}
+                                </span>
+                            </div>
+
+                            <p className={"text-sm text-zinc-300 leading-relaxed break-all"}>
+                                {msg.text}
+                            </p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/*Chat place*/}
             <div className={"p-4 border-t border-zinc-800 bg-zinc-900/30"}>
                 <div className={"flex gap-4"}>
                     <div className={"flex-1 relative group"}>

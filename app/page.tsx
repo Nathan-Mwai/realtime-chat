@@ -2,7 +2,7 @@
 import React from 'react'
 import {useMutation} from "@tanstack/react-query";
 import {client} from "@/lib/client";
-import {useRouter} from "next/navigation";
+import {useRouter, useSearchParams} from "next/navigation";
 import {useUsername} from "@/hooks/use-username";
 
 
