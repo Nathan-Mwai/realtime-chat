@@ -2,6 +2,9 @@
 
 import React, {useRef, useState} from 'react'
 import {useParams} from "next/navigation";
+import {useMutation} from "@tanstack/react-query";
+import {client} from "@/lib/client";
+import {useUsername} from "@/hooks/use-username";
 
 const formatTimeRemaining =  (seconds:number) => {
     const mins = Math.floor(seconds / 60)
@@ -15,11 +18,21 @@ const Page = () => {
 
     const roomId = params.roomId as string
 
+    const {username} = useUsername()
+
     const [input, setInput] = useState("")
 
     const inputRef = useRef<HTMLInputElement>(null)
 
     const [timeRemaining, setTimeRemaining] = useState<number | null>(null)
+
+    const { mutate: sendMessage, isPending } = useMutation({
+        mutationFn: async ({ text }: { text: string }) => {
+            await client.messages.post({ sender: username, text }, { query: { roomId } })
+
+            // setInput("")
+        },
+    })
 
     const [copyStatus, setCopyStatus] = useState("COPY")
 
@@ -82,7 +95,7 @@ const Page = () => {
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={(e) =>{
                                 if(e.key === "Enter" && input.trim()){
-                                    // TODO:SEND TO BACKEND
+                                    sendMessage({text:input})
                                     inputRef.current?.focus()
                                 }
                         }}
@@ -90,7 +103,15 @@ const Page = () => {
                         />
                     </div>
 
-                    <button className={"bg-zinc-800 text-zinc-400 px-6 text-sm font-bold hover:text-zinc-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"}>SEND</button>
+                    <button
+                        onClick={() => {
+                            sendMessage({text:input})
+                            inputRef.current?.focus()
+                    }}
+                        disabled={!input.trim() || isPending}
+                        className={"bg-zinc-800 text-zinc-400 px-6 text-sm font-bold hover:text-zinc-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"}>
+                        SEND
+                    </button>
 
                 </div>
             </div>
