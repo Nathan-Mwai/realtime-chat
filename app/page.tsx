@@ -1,5 +1,5 @@
 "use client"
-import React from 'react'
+import React, {Suspense} from 'react'
 import {useMutation} from "@tanstack/react-query";
 import {client} from "@/lib/client";
 import {useRouter, useSearchParams} from "next/navigation";
@@ -7,6 +7,10 @@ import {useUsername} from "@/hooks/use-username";
 
 
 const Page = () => {
+    return <Suspense><Lobby/></Suspense>
+}
+
+const Lobby = () => {
     const {username} = useUsername()
 
     const router = useRouter()
